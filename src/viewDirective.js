@@ -141,7 +141,9 @@ function $ViewDirective(   $state,   $compile,   $controller,   $injector,   $ui
     var statics = function() {
       return {
         leave: function (element) { element.remove(); },
-        enter: function (element, parent, anchor) { anchor.after(element); }
+        enter: function (element, parent, anchor) { anchor.after(element); },
+        hide: function (element) { element.addClass('ng-hide'); },
+        show: function (element) { element.removeClass('ng-hide'); }
       };
     };
 
@@ -149,7 +151,9 @@ function $ViewDirective(   $state,   $compile,   $controller,   $injector,   $ui
       return function(shouldAnimate) {
         return !shouldAnimate ? statics() : {
           enter: function(element, parent, anchor) { $animate.enter(element, null, anchor); },
-          leave: function(element) { $animate.leave(element, function() { element.remove(); }); }
+          leave: function(element) { $animate.leave(element, function() { element.remove(); }); },
+          hide: function (element) { $animate.addClass(element, 'ng-hide'); },
+          show: function (element) { $animate.removeClass(element, 'ng-hide'); }
         };
       };
     }
@@ -160,7 +164,9 @@ function $ViewDirective(   $state,   $compile,   $controller,   $injector,   $ui
       return function(shouldAnimate) {
         return !shouldAnimate ? statics() : {
           enter: function(element, parent, anchor) { animate.enter(element, parent); },
-          leave: function(element) { animate.leave(element.contents(), element); }
+          leave: function(element) { animate.leave(element.contents(), element); },
+          hide: function (element) { animate.addClass(element, 'ng-hide'); },
+          show: function (element) { animate.removeClass(element, 'ng-hide'); }
         };
       };
     }
@@ -172,11 +178,7 @@ function $ViewDirective(   $state,   $compile,   $controller,   $injector,   $ui
     restrict: 'ECA',
     compile: function (element, attrs) {
       var initial   = element.html(),
-          isDefault = true,
-          anchor    = angular.element($document[0].createComment(' ui-view-anchor ')),
           parentEl  = element.parent();
-
-      element.prepend(anchor);
 
       return function ($scope) {
         var inherited = parentEl.inheritedData('$uiView');
@@ -206,65 +208,40 @@ function $ViewDirective(   $state,   $compile,   $controller,   $injector,   $ui
 
         updateView(false);
 
-        function cleanupLastView() {
+        function cleanupLastView(shouldDestroy) {
           if (currentEl) {
-            renderer(true).leave(currentEl);
-            currentEl = null;
+            if (shouldDestroy) {
+              renderer(true).leave(currentEl);
+            } else {
+              renderer(true).hide(currentEl);
+            }
           }
+          currentEl = null;
 
-          if (currentScope) {
+          if (currentScope && shouldDestroy) {
             currentScope.$destroy();
-            currentScope = null;
-          }
+          } // currentScope is stored in $uiViewScope in element data
+          currentScope = null;
         }
 
-        function updateView(shouldAnimate) {
-          var locals = $state.$current && $state.$current.locals[name];
-
-          if (isDefault) {
-            isDefault = false;
-            element.replaceWith(anchor);
-          }
-
-          if (!locals) {
-            cleanupLastView();
-            currentEl = element.clone();
-            currentEl.html(initial);
-            renderer(shouldAnimate).enter(currentEl, parentEl, anchor);
-
-            currentScope = $scope.$new();
-            $compile(currentEl.contents())(currentScope);
-            return;
-          }
-
-          if (locals === viewLocals) return; // nothing to do
-
-          cleanupLastView();
-
-          currentEl = element.clone();
-          currentEl.html(locals.$template ? locals.$template : initial);
-          renderer(true).enter(currentEl, parentEl, anchor);
-
+        function createView(template, identifier) {
+          template = template || initial;
+          currentEl = angular.element('<div></div>');
+          element.append(currentEl);
+          currentEl.html(template);
+          //renderer(true).enter(currentEl, parentEl, anchor);
           currentEl.data('$uiView', view);
 
-          viewLocals = locals;
-          view.state = locals.$$state;
-
-          var link = $compile(currentEl.contents());
-
           currentScope = $scope.$new();
-
-          if (locals.$$controller) {
-            locals.$scope = currentScope;
-            var controller = $controller(locals.$$controller, locals);
-            if ($state.$current.controllerAs) {
-              currentScope[$state.$current.controllerAs] = controller;
-            }
-            currentEl.children().data('$ngControllerController', controller);
+          currentEl.data('$uiViewScope', currentScope);
+          if (identifier) {
+            currentEl.attr('ui-view-ref', identifier);
           }
 
-          link(currentScope);
+          return currentEl.contents();
+        }
 
+        function loadedView() {
           /**
            * @ngdoc event
            * @name ui.router.state.directive:ui-view#$viewContentLoaded
@@ -281,6 +258,56 @@ function $ViewDirective(   $state,   $compile,   $controller,   $injector,   $ui
           if (!angular.isDefined(autoscrollExp) || !autoscrollExp || $scope.$eval(autoscrollExp)) {
             $uiViewScroll(currentEl);
           }
+        }
+
+        function updateView(shouldAnimate) {
+          var locals = $state.$current && $state.$current.locals[name];
+
+          if (!locals) {
+            cleanupLastView(true);
+            $compile(createView())(currentScope);
+            return;
+          }
+
+          if (locals === viewLocals) return; // nothing to do
+
+          cleanupLastView(!viewLocals || !viewLocals.$$state.self.cache);
+
+          viewLocals = locals;
+          view.state = locals.$$state;
+
+          var identifier = view.state.self.cache;
+          if (identifier === true) {
+            identifier = locals.$$controller;
+          }
+
+          if (identifier) {
+            var matches = element.children('div[ui-view-ref='+identifier+']');
+            if (matches.length) {
+              currentEl = matches;
+              currentScope = currentEl.data('$uiViewScope');
+
+              renderer(shouldAnimate).show(currentEl);
+              loadedView();
+
+              return;
+            }
+          }
+
+          var link = $compile(createView(locals.$template, identifier));
+
+          if (locals.$$controller) {
+            locals.$scope = currentScope;
+            var controller = $controller(locals.$$controller, locals);
+            if ($state.$current.controllerAs) {
+              currentScope[$state.$current.controllerAs] = controller;
+            }
+            currentEl.children().data('$ngControllerController', controller);
+          }
+
+          link(currentScope);
+
+          loadedView();
         }
       };
     }
