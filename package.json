@@ -1,8 +1,8 @@
 {
   "name": "angular-ui-router",
   "description": "State-based routing for AngularJS",
-  "version": "0.2.8",
-  "homepage": "http://angular-ui.github.com/",
+  "version": "0.3.0-experimental",
+  "homepage": "http://github.com/Alphadelta14/ui-router",
   "contributors": [
     {
       "name": "Nate Abele",
@@ -16,6 +16,10 @@
     {
       "name": "Karsten Sperling",
       "web": "https://github.com/ksperling"
+    },
+    {
+      "name": "David Alphus",
+      "web": "http://github.com/Alphadelta14"
     }
   ],
   "maintainers": [
@@ -26,15 +30,15 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/angular-ui/ui-router.git"
+    "url": "https://github.com/Alphadelta14/ui-router.git"
   },
   "bugs": {
-    "url": "https://github.com/angular-ui/ui-router/issues"
+    "url": "https://github.com/Alphadelta14/ui-router/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/angular-ui/ui-router/blob/master/LICENSE"
+      "url": "https://github.com/Alphadelta14/ui-router/blob/master/LICENSE"
     }
   ],
   "dependencies": {},

@@ -1,6 +1,6 @@
 {
   "name": "angular-ui-router",
-  "version": "0.2.8",
+  "version": "0.3.0-experimental",
   "description": "State-based routing for AngularJS",
   "keywords": [
     "angular",
@@ -12,5 +12,5 @@
     "release/angular-ui-router.min.js"
   ],
   "license": "MIT",
-  "repo": "angular-ui/ui-router"
+  "repo": "Alphadelta14/ui-router"
 }
